@@ -18,9 +18,12 @@ func TestDispatcher(t *testing.T) {
 	jobQueue := make(chan pool.Job, 10)
 	howManyJobs := 2
 	i := 0
+	mu := &sync.Mutex{}
 	wgJobHandler := &sync.WaitGroup{}
 	wgJobHandler.Add(howManyJobs)
 	jobHandler := func(j pool.Job) error {
+		mu.Lock()
+		defer mu.Unlock()
 		i++
 		wgJobHandler.Done()
 		return nil

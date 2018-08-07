@@ -44,6 +44,9 @@ func TestPool(t *testing.T) {
 	}
 
 	done <- struct{}{}
+	// sleep 1 second for done channel to finish
+	time.Sleep(time.Duration(1) * time.Second)
+
 	if closed := p.Closed(); closed {
 		t.Fatal("pool should not be closed")
 	}
