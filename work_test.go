@@ -1,6 +1,9 @@
 package pool_test
 
 import (
+	"io"
+	"io/ioutil"
+	"strings"
 	"sync"
 	"testing"
 
@@ -47,4 +50,39 @@ func TestWorker(t *testing.T) {
 		t.Fatal("worker should be closed")
 	}
 
+}
+
+func BenchmarkWorker(b *testing.B) {
+	name := "worker"
+	done := make(chan struct{})
+	workerPool := make(chan chan pool.Job, 1)
+	jobPool := make(chan struct{}, 1)
+	howManyJobs := 2
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	i := 0
+	jobHandler := func(j pool.Job) error {
+		i++
+		io.Copy(ioutil.Discard, strings.NewReader(j.Name+j.Key))
+		return nil
+	}
+	worker := pool.NewWorker(done, workerPool, wg, jobPool)
+	worker.Start(jobHandler)
+
+	var basket chan pool.Job
+	job := pool.Job{
+		Name: "pool",
+		Key:  "test",
+	}
+
+	b.Run(name, func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			for range pool.Range(howManyJobs) {
+				jobPool <- struct{}{}
+				basket = <-workerPool
+				j := job
+				basket <- j
+			}
+		}
+	})
 }

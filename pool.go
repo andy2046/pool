@@ -188,7 +188,7 @@ func (p *Pool) autoScale() {
 			if currentLoad > p.poolConfig.LoadFactor {
 				count++
 			}
-			if count == p.poolConfig.SuccessThreshold && p.poolNum < p.poolConfig.MaxPoolNum {
+			if !p.closed && count == p.poolConfig.SuccessThreshold && p.poolNum < p.poolConfig.MaxPoolNum {
 				count = 0
 				p.newDispatcher()
 				p.poolNum++

@@ -1,6 +1,9 @@
 package pool_test
 
 import (
+	"io"
+	"io/ioutil"
+	"strings"
 	"testing"
 	"time"
 
@@ -65,4 +68,34 @@ func TestPool(t *testing.T) {
 		t.Fatalf("pool size should be %d \n", 0)
 	}
 
+}
+
+func BenchmarkPool(b *testing.B) {
+	name := "pool"
+	job := pool.Job{
+		Name: "pool",
+		Key:  "test",
+	}
+	done := make(chan struct{})
+	jobHandlerGenerator := func() pool.JobHandler {
+		return func(j pool.Job) error {
+			io.Copy(ioutil.Discard, strings.NewReader(j.Name+j.Key))
+			return nil
+		}
+	}
+	size := 3
+	opt := func(c *pool.Config) error {
+		c.InitPoolNum = size
+		c.WorkerNum = 5
+		return nil
+	}
+	p := pool.New(done, jobHandlerGenerator, opt)
+	p.Start()
+
+	b.Run(name, func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			j := job
+			p.JobQueue <- j
+		}
+	})
 }
