@@ -3,7 +3,9 @@ package pool_test
 import (
 	"io"
 	"io/ioutil"
+	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,15 +16,26 @@ var _ pool.IPool = &pool.Pool{}
 
 func TestPool(t *testing.T) {
 	done := make(chan struct{})
+	mu := &sync.Mutex{}
+	NumJobs := 50
+	expected := make([]int, NumJobs)
+	for i := range pool.Range(NumJobs) {
+		expected[i] = i
+	}
+	result := make([]int, NumJobs)
 	jobHandlerGenerator := func() pool.JobHandler {
-		return func(pool.Job) error {
+		return func(j pool.Job) error {
+			mu.Lock()
+			defer mu.Unlock()
+			result[int(j.ID)] = int(j.ID)
+			time.Sleep(100 * time.Millisecond)
 			return nil
 		}
 	}
 	size := 3
 	opt := func(c *pool.Config) error {
 		c.InitPoolNum = size
-		c.WorkerNum = 5
+		c.WorkerNum = 2
 		return nil
 	}
 
@@ -36,7 +49,11 @@ func TestPool(t *testing.T) {
 		t.Fatalf("pool size should be %d \n", size)
 	}
 
-	p.JobQueue <- pool.Job{}
+	for i := range pool.Range(NumJobs) {
+		p.JobQueue <- pool.Job{
+			ID: int32(i),
+		}
+	}
 
 	p.Undispatch()
 	if closed := p.Closed(); closed {
@@ -47,8 +64,8 @@ func TestPool(t *testing.T) {
 	}
 
 	done <- struct{}{}
-	// sleep 1 second for done channel to finish
-	time.Sleep(time.Duration(1) * time.Second)
+	// sleep for done channel to finish
+	time.Sleep(1 * time.Second)
 
 	if closed := p.Closed(); closed {
 		t.Fatal("pool should not be closed")
@@ -58,8 +75,11 @@ func TestPool(t *testing.T) {
 	}
 
 	close(done)
-	// sleep 1 second for done channel to finish
-	time.Sleep(time.Duration(1) * time.Second)
+	// sleep for done channel to finish
+	time.Sleep(5 * time.Second)
+	if !reflect.DeepEqual(result, expected) {
+		t.Fatal("pool should finish all the jobs before exiting")
+	}
 
 	if closed := p.Closed(); !closed {
 		t.Fatal("pool should be closed")

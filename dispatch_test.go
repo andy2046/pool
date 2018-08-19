@@ -45,8 +45,8 @@ func TestDispatcher(t *testing.T) {
 	wgJobHandler.Wait()
 
 	done <- struct{}{}
-	// sleep 1 second for done channel to finish
-	time.Sleep(time.Duration(1) * time.Second)
+	// sleep for done channel to finish
+	time.Sleep(1 * time.Second)
 
 	if closed := dispatcher.Closed(); !closed {
 		t.Fatal("dispatcher should be closed")

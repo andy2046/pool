@@ -33,6 +33,9 @@ type (
 		// wait for workers to finish
 		wg *sync.WaitGroup
 
+		// wait for jobs to be finished
+		wgJob *sync.WaitGroup
+
 		// wait to drain JobQueue
 		wgPool *sync.WaitGroup
 
@@ -58,6 +61,7 @@ func NewDispatcher(done chan struct{}, wgPool *sync.WaitGroup, numWorkers int, j
 		jobQueue:   jobQueue,
 		jobHandler: jobHandler,
 		wg:         &sync.WaitGroup{},
+		wgJob:      &sync.WaitGroup{},
 		wgPool:     wgPool,
 		done:       done,
 		doneWorker: make(chan struct{}, numWorkers),
@@ -88,7 +92,7 @@ func (d *Dispatcher) dispatch() {
 				break
 			}
 			// a job request has been received
-			d.wg.Add(1)
+			d.wgJob.Add(1)
 			go func(j Job) {
 				// try to obtain a worker that is available
 				// this will block until a worker is idle
@@ -96,7 +100,7 @@ func (d *Dispatcher) dispatch() {
 				w := <-d.workerPool
 				// dispatch job to worker's job channel
 				w <- j
-				d.wg.Done()
+				d.wgJob.Done()
 			}(job)
 		case <-d.done:
 			d.done = nil
@@ -105,6 +109,7 @@ func (d *Dispatcher) dispatch() {
 				d.closed = true
 			}
 			d.mu.Unlock()
+			d.wgJob.Wait()
 			close(d.doneWorker)
 			d.wg.Wait()
 			close(d.workerPool)
