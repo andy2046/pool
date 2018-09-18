@@ -16,7 +16,7 @@ var _ pool.IPool = &pool.Pool{}
 
 func TestPool(t *testing.T) {
 	done := make(chan struct{})
-	mu := &sync.Mutex{}
+	mu := &sync.RWMutex{}
 	NumJobs := 50
 	expected := make([]int, NumJobs)
 	for i := range pool.Range(NumJobs) {
@@ -51,7 +51,7 @@ func TestPool(t *testing.T) {
 
 	for i := range pool.Range(NumJobs) {
 		p.JobQueue <- pool.Job{
-			ID: int32(i),
+			ID: int64(i),
 		}
 	}
 
@@ -77,9 +77,12 @@ func TestPool(t *testing.T) {
 	close(done)
 	// sleep for done channel to finish
 	time.Sleep(5 * time.Second)
+	mu.RLock()
 	if !reflect.DeepEqual(result, expected) {
+		mu.RUnlock()
 		t.Fatal("pool should finish all the jobs before exiting")
 	}
+	mu.RUnlock()
 
 	if closed := p.Closed(); !closed {
 		t.Fatal("pool should be closed")

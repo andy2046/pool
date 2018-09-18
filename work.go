@@ -9,7 +9,7 @@ type (
 	// Job represents the job to be run.
 	Job struct {
 		Name     string `json:"name,omitempty"`
-		ID       int32  `json:"id,omitempty"`
+		ID       int64  `json:"id,omitempty"`
 		Key      string `json:"key,omitempty"`
 		WorkLoad []byte `json:"workload"`
 	}
