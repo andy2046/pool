@@ -3,6 +3,7 @@ package pool
 
 import (
 	"log"
+	"os"
 	"sync"
 	"time"
 )
@@ -70,6 +71,9 @@ type (
 
 		// JobQueue channel buffer size
 		JobQueueBufferSize int
+
+		// Verbose logging mode if it's true, by default it's false
+		Verbose bool
 	}
 
 	// Resize related config.
@@ -120,6 +124,10 @@ func New(done chan struct{}, jobHandlerGenerator JobHandlerGen, options ...Optio
 
 	if pConfig.WorkerNum <= 0 {
 		log.Panicln("config WorkerNum should not be less than 1")
+	}
+
+	if pConfig.Verbose {
+		os.Setenv("Pool.Log.Verbose", "true")
 	}
 
 	return &Pool{
@@ -289,6 +297,13 @@ func (p *Pool) Size() int {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.poolNum
+}
+
+func verbose() (v bool) {
+	if value, ok := os.LookupEnv("Pool.Log.Verbose"); ok && value == "true" {
+		v = true
+	}
+	return
 }
 
 // Range creates a range progressing from zero up to, but not including end.

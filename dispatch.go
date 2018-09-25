@@ -114,7 +114,9 @@ func (d *Dispatcher) dispatch() {
 			d.wg.Wait()
 			close(d.workerPool)
 			close(d.jobPool)
-			log.Println("dispatcher closed")
+			if verbose() {
+				log.Println("dispatcher closed")
+			}
 			return
 		}
 	}

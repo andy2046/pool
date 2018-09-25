@@ -75,7 +75,7 @@ var (
 ```
 
 
-## <a name="Max">func</a> [Max](./pool.go?s=6849:6871#L300)
+## <a name="Max">func</a> [Max](./pool.go?s=7125:7147#L315)
 ``` go
 func Max(x, y int) int
 ```
@@ -83,7 +83,7 @@ Max returns the larger of x or y.
 
 
 
-## <a name="Min">func</a> [Min](./pool.go?s=6951:6973#L308)
+## <a name="Min">func</a> [Min](./pool.go?s=7227:7249#L323)
 ``` go
 func Min(x, y int) int
 ```
@@ -91,7 +91,7 @@ Min returns the smaller of x or y.
 
 
 
-## <a name="Range">func</a> [Range](./pool.go?s=6746:6776#L295)
+## <a name="Range">func</a> [Range](./pool.go?s=7022:7052#L310)
 ``` go
 func Range(end int) []struct{}
 ```
@@ -100,7 +100,7 @@ Range creates a range progressing from zero up to, but not including end.
 
 
 
-## <a name="Config">type</a> [Config](./pool.go?s=1070:1584#L54)
+## <a name="Config">type</a> [Config](./pool.go?s=1076:1668#L55)
 ``` go
 type Config struct {
     // initial number of dispatcher
@@ -121,6 +121,9 @@ type Config struct {
 
     // JobQueue channel buffer size
     JobQueueBufferSize int
+
+    // Verbose logging mode if it's true, by default it's false
+    Verbose bool
 }
 ```
 Config used to init Pool.
@@ -158,7 +161,7 @@ NewDispatcher creates a dispatcher.
 
 
 
-### <a name="Dispatcher.Closed">func</a> (\*Dispatcher) [Closed](./dispatch.go?s=2713:2747#L124)
+### <a name="Dispatcher.Closed">func</a> (\*Dispatcher) [Closed](./dispatch.go?s=2737:2771#L126)
 ``` go
 func (d *Dispatcher) Closed() bool
 ```
@@ -167,7 +170,7 @@ Closed returns true if dispatcher received a signal to stop.
 
 
 
-### <a name="Dispatcher.DeWorker">func</a> (\*Dispatcher) [DeWorker](./dispatch.go?s=2895:2936#L132)
+### <a name="Dispatcher.DeWorker">func</a> (\*Dispatcher) [DeWorker](./dispatch.go?s=2919:2960#L134)
 ``` go
 func (d *Dispatcher) DeWorker(num ...int)
 ```
@@ -205,7 +208,7 @@ IDispatcher is the Dispatcher interface.
 
 
 
-## <a name="IPool">type</a> [IPool](./pool.go?s=143:328#L12)
+## <a name="IPool">type</a> [IPool](./pool.go?s=149:334#L13)
 ``` go
 type IPool interface {
     Start()
@@ -282,7 +285,7 @@ JobHandler completes the job.
 
 
 
-## <a name="JobHandlerGen">type</a> [JobHandlerGen](./pool.go?s=2060:2093#L89)
+## <a name="JobHandlerGen">type</a> [JobHandlerGen](./pool.go?s=2144:2177#L93)
 ``` go
 type JobHandlerGen = func() JobHandler
 ```
@@ -297,7 +300,7 @@ JobHandlerGen returns a JobHandler when it's called.
 
 
 
-## <a name="Option">type</a> [Option](./pool.go?s=1972:2000#L86)
+## <a name="Option">type</a> [Option](./pool.go?s=2056:2084#L90)
 ``` go
 type Option = func(*Config) error
 ```
@@ -312,7 +315,7 @@ Option applies config to Pool Config.
 
 
 
-## <a name="Pool">type</a> [Pool](./pool.go?s=375:1037#L24)
+## <a name="Pool">type</a> [Pool](./pool.go?s=381:1043#L25)
 ``` go
 type Pool struct {
     // JobQueue channel for incoming job request,
@@ -333,7 +336,7 @@ Pool represents a pool with dispatcher.
 
 
 
-### <a name="New">func</a> [New](./pool.go?s=2413:2501#L109)
+### <a name="New">func</a> [New](./pool.go?s=2497:2585#L113)
 ``` go
 func New(done chan struct{}, jobHandlerGenerator JobHandlerGen, options ...Option) *Pool
 ```
@@ -343,7 +346,7 @@ New creates a pool.
 
 
 
-### <a name="Pool.Closed">func</a> (\*Pool) [Closed](./pool.go?s=6455:6483#L281)
+### <a name="Pool.Closed">func</a> (\*Pool) [Closed](./pool.go?s=6605:6633#L289)
 ``` go
 func (p *Pool) Closed() bool
 ```
@@ -352,7 +355,7 @@ Closed returns true if pool received a signal to stop.
 
 
 
-### <a name="Pool.SetLoadFactor">func</a> (\*Pool) [SetLoadFactor](./pool.go?s=5215:5259#L228)
+### <a name="Pool.SetLoadFactor">func</a> (\*Pool) [SetLoadFactor](./pool.go?s=5365:5409#L236)
 ``` go
 func (p *Pool) SetLoadFactor(loadFactor int)
 ```
@@ -361,7 +364,7 @@ SetLoadFactor applies LoadFactor to Pool Config.
 
 
 
-### <a name="Pool.SetMaxPoolNum">func</a> (\*Pool) [SetMaxPoolNum](./pool.go?s=4972:5016#L217)
+### <a name="Pool.SetMaxPoolNum">func</a> (\*Pool) [SetMaxPoolNum](./pool.go?s=5122:5166#L225)
 ``` go
 func (p *Pool) SetMaxPoolNum(maxPoolNum int)
 ```
@@ -370,7 +373,7 @@ SetMaxPoolNum applies MaxPoolNum to Pool Config.
 
 
 
-### <a name="Pool.SetResizePeriodSeconds">func</a> (\*Pool) [SetResizePeriodSeconds](./pool.go?s=5787:5849#L250)
+### <a name="Pool.SetResizePeriodSeconds">func</a> (\*Pool) [SetResizePeriodSeconds](./pool.go?s=5937:5999#L258)
 ``` go
 func (p *Pool) SetResizePeriodSeconds(resizePeriodSeconds int)
 ```
@@ -379,7 +382,7 @@ SetResizePeriodSeconds applies Resize PeriodSeconds to Pool Config.
 
 
 
-### <a name="Pool.SetResizeSuccessThreshold">func</a> (\*Pool) [SetResizeSuccessThreshold](./pool.go?s=5483:5551#L239)
+### <a name="Pool.SetResizeSuccessThreshold">func</a> (\*Pool) [SetResizeSuccessThreshold](./pool.go?s=5633:5701#L247)
 ``` go
 func (p *Pool) SetResizeSuccessThreshold(resizeSuccessThreshold int)
 ```
@@ -388,7 +391,7 @@ SetResizeSuccessThreshold applies Resize SuccessThreshold to Pool Config.
 
 
 
-### <a name="Pool.Size">func</a> (\*Pool) [Size](./pool.go?s=6586:6611#L288)
+### <a name="Pool.Size">func</a> (\*Pool) [Size](./pool.go?s=6736:6761#L296)
 ``` go
 func (p *Pool) Size() int
 ```
@@ -397,7 +400,7 @@ Size returns current number of dispatcher.
 
 
 
-### <a name="Pool.Start">func</a> (\*Pool) [Start](./pool.go?s=3259:3281#L137)
+### <a name="Pool.Start">func</a> (\*Pool) [Start](./pool.go?s=3409:3431#L145)
 ``` go
 func (p *Pool) Start()
 ```
@@ -406,7 +409,7 @@ Start run dispatchers in the pool.
 
 
 
-### <a name="Pool.Undispatch">func</a> (\*Pool) [Undispatch](./pool.go?s=6108:6145#L262)
+### <a name="Pool.Undispatch">func</a> (\*Pool) [Undispatch](./pool.go?s=6258:6295#L270)
 ``` go
 func (p *Pool) Undispatch(num ...int)
 ```
@@ -416,7 +419,7 @@ num is the number of dispatcher to stop, default to 1.
 
 
 
-## <a name="Resize">type</a> [Resize](./pool.go?s=1614:1927#L76)
+## <a name="Resize">type</a> [Resize](./pool.go?s=1698:2011#L80)
 ``` go
 type Resize struct {
     // the number of times the check needs to succeed before running resize
@@ -462,7 +465,7 @@ NewWorker creates a worker.
 
 
 
-### <a name="Worker.Closed">func</a> (\*Worker) [Closed](./work.go?s=1813:1843#L90)
+### <a name="Worker.Closed">func</a> (\*Worker) [Closed](./work.go?s=1839:1869#L92)
 ``` go
 func (w *Worker) Closed() bool
 ```

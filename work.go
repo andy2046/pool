@@ -79,7 +79,9 @@ func (w *Worker) Start(handler JobHandler) {
 				w.mu.Unlock()
 				close(w.basket)
 				w.wg.Done()
-				log.Println("worker closed")
+				if verbose() {
+					log.Println("worker closed")
+				}
 				return
 			}
 		}
