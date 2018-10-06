@@ -1,7 +1,6 @@
 package pool
 
 import (
-	"log"
 	"sync"
 )
 
@@ -115,7 +114,7 @@ func (d *Dispatcher) dispatch() {
 			close(d.workerPool)
 			close(d.jobPool)
 			if verbose() {
-				log.Println("dispatcher closed")
+				logger.Println("dispatcher closed")
 			}
 			return
 		}

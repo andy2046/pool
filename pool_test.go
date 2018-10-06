@@ -27,7 +27,8 @@ func TestPool(t *testing.T) {
 		return func(j pool.Job) error {
 			mu.Lock()
 			defer mu.Unlock()
-			result[int(j.ID)] = int(j.ID)
+			i := j.Data.(int)
+			result[i] = i
 			time.Sleep(100 * time.Millisecond)
 			return nil
 		}
@@ -51,7 +52,7 @@ func TestPool(t *testing.T) {
 
 	for i := range pool.Range(NumJobs) {
 		p.JobQueue <- pool.Job{
-			ID: int64(i),
+			Data: i,
 		}
 	}
 
@@ -96,13 +97,12 @@ func TestPool(t *testing.T) {
 func BenchmarkPool(b *testing.B) {
 	name := "pool"
 	job := pool.Job{
-		Name: "pool",
-		Key:  "test",
+		Data: "test",
 	}
 	done := make(chan struct{})
 	jobHandlerGenerator := func() pool.JobHandler {
 		return func(j pool.Job) error {
-			io.Copy(ioutil.Discard, strings.NewReader(j.Name+j.Key))
+			io.Copy(ioutil.Discard, strings.NewReader(j.Data.(string)))
 			return nil
 		}
 	}
@@ -115,6 +115,7 @@ func BenchmarkPool(b *testing.B) {
 	p := pool.New(done, jobHandlerGenerator, opt)
 	p.Start()
 
+	b.ResetTimer()
 	b.Run(name, func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			j := job

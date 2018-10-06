@@ -18,7 +18,7 @@ type (
 		SetMaxPoolNum(int)
 		SetLoadFactor(int)
 		SetResizeSuccessThreshold(int)
-		SetResizePeriodSeconds(int)
+		SetResizePeriodSeconds(time.Duration)
 	}
 
 	// Pool represents a pool with dispatcher.
@@ -81,9 +81,9 @@ type (
 		// the number of times the check needs to succeed before running resize
 		SuccessThreshold int
 		// how often to check LoadFactor to determine whether to resize
-		PeriodSeconds int
+		PeriodSeconds time.Duration
 		// the number of second to wait after the Pool has started before running the check
-		InitialDelaySeconds int
+		InitialDelaySeconds time.Duration
 	}
 
 	// Option applies config to Pool Config.
@@ -97,16 +97,18 @@ var (
 	// DefaultConfig is the default Pool Config.
 	DefaultConfig = Config{
 		InitPoolNum: 1,
-		MaxPoolNum:  5,
-		WorkerNum:   500,
+		MaxPoolNum:  3,
+		WorkerNum:   50,
 		LoadFactor:  20,
 		Resize: Resize{
 			SuccessThreshold:    2,
-			PeriodSeconds:       10,
+			PeriodSeconds:       30,
 			InitialDelaySeconds: 60,
 		},
-		JobQueueBufferSize: 10000,
+		JobQueueBufferSize: 1000,
 	}
+
+	logger = log.New(os.Stdout, "pool:", log.LstdFlags)
 )
 
 // New creates a pool.
@@ -114,16 +116,16 @@ func New(done chan struct{}, jobHandlerGenerator JobHandlerGen, options ...Optio
 	pConfig := DefaultConfig
 	setOption(&pConfig, options...)
 
-	if pConfig.InitPoolNum <= 0 {
-		log.Panicln("config InitPoolNum should not be less than 1")
+	if pConfig.InitPoolNum < 1 {
+		logger.Panicln("config InitPoolNum should not be less than 1")
 	}
 
 	if pConfig.MaxPoolNum < pConfig.InitPoolNum {
-		log.Panicln("config MaxPoolNum should not be less than config InitPoolNum")
+		pConfig.MaxPoolNum = pConfig.InitPoolNum
 	}
 
-	if pConfig.WorkerNum <= 0 {
-		log.Panicln("config WorkerNum should not be less than 1")
+	if pConfig.WorkerNum < 1 {
+		logger.Panicln("config WorkerNum should not be less than 1")
 	}
 
 	if pConfig.Verbose {
@@ -185,9 +187,10 @@ func (p *Pool) listen() {
 
 // autoScale check LoadFactor peridically to determine whether to resize.
 func (p *Pool) autoScale() {
-	time.Sleep(time.Duration(p.poolConfig.InitialDelaySeconds) * time.Second)
+	time.Sleep(p.poolConfig.InitialDelaySeconds * time.Second)
 	count := 0
-	t := time.NewTicker((time.Duration(p.poolConfig.PeriodSeconds) * time.Second))
+	t := time.NewTicker(p.poolConfig.PeriodSeconds * time.Second)
+	defer t.Stop()
 	for {
 		select {
 		case <-t.C:
@@ -196,7 +199,7 @@ func (p *Pool) autoScale() {
 			if currentLoad > p.poolConfig.LoadFactor {
 				count++
 			}
-			if !p.closed && count == p.poolConfig.SuccessThreshold && p.poolNum < p.poolConfig.MaxPoolNum {
+			if !p.closed && count >= p.poolConfig.SuccessThreshold && p.poolNum < p.poolConfig.MaxPoolNum {
 				count = 0
 				p.newDispatcher()
 				p.poolNum++
@@ -204,7 +207,6 @@ func (p *Pool) autoScale() {
 			p.mu.Unlock()
 		case _, open := <-p.doneMe:
 			if !open {
-				t.Stop()
 				return
 			}
 		}
@@ -255,7 +257,7 @@ func (p *Pool) SetResizeSuccessThreshold(resizeSuccessThreshold int) {
 }
 
 // SetResizePeriodSeconds applies Resize PeriodSeconds to Pool Config.
-func (p *Pool) SetResizePeriodSeconds(resizePeriodSeconds int) {
+func (p *Pool) SetResizePeriodSeconds(resizePeriodSeconds time.Duration) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	opt := func(c *Config) error {

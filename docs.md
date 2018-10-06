@@ -5,7 +5,6 @@
 
 * [Overview](#pkg-overview)
 * [Index](#pkg-index)
-* [Examples](#pkg-examples)
 
 ## <a name="pkg-overview">Overview</a>
 Package pool provides worker pool with job queue.
@@ -36,7 +35,7 @@ Package pool provides worker pool with job queue.
   * [func (p *Pool) Closed() bool](#Pool.Closed)
   * [func (p *Pool) SetLoadFactor(loadFactor int)](#Pool.SetLoadFactor)
   * [func (p *Pool) SetMaxPoolNum(maxPoolNum int)](#Pool.SetMaxPoolNum)
-  * [func (p *Pool) SetResizePeriodSeconds(resizePeriodSeconds int)](#Pool.SetResizePeriodSeconds)
+  * [func (p *Pool) SetResizePeriodSeconds(resizePeriodSeconds time.Duration)](#Pool.SetResizePeriodSeconds)
   * [func (p *Pool) SetResizeSuccessThreshold(resizeSuccessThreshold int)](#Pool.SetResizeSuccessThreshold)
   * [func (p *Pool) Size() int](#Pool.Size)
   * [func (p *Pool) Start()](#Pool.Start)
@@ -47,8 +46,6 @@ Package pool provides worker pool with job queue.
   * [func (w *Worker) Closed() bool](#Worker.Closed)
   * [func (w *Worker) Start(handler JobHandler)](#Worker.Start)
 
-#### <a name="pkg-examples">Examples</a>
-* [Pool](#example_Pool)
 
 #### <a name="pkg-files">Package files</a>
 [dispatch.go](./dispatch.go) [pool.go](./pool.go) [work.go](./work.go) 
@@ -61,21 +58,21 @@ var (
     // DefaultConfig is the default Pool Config.
     DefaultConfig = Config{
         InitPoolNum: 1,
-        MaxPoolNum:  5,
-        WorkerNum:   500,
+        MaxPoolNum:  3,
+        WorkerNum:   50,
         LoadFactor:  20,
         Resize: Resize{
             SuccessThreshold:    2,
-            PeriodSeconds:       10,
+            PeriodSeconds:       30,
             InitialDelaySeconds: 60,
         },
-        JobQueueBufferSize: 10000,
+        JobQueueBufferSize: 1000,
     }
 )
 ```
 
 
-## <a name="Max">func</a> [Max](./pool.go?s=7125:7147#L315)
+## <a name="Max">func</a> [Max](./pool.go?s=7157:7179#L317)
 ``` go
 func Max(x, y int) int
 ```
@@ -83,7 +80,7 @@ Max returns the larger of x or y.
 
 
 
-## <a name="Min">func</a> [Min](./pool.go?s=7227:7249#L323)
+## <a name="Min">func</a> [Min](./pool.go?s=7259:7281#L325)
 ``` go
 func Min(x, y int) int
 ```
@@ -91,7 +88,7 @@ Min returns the smaller of x or y.
 
 
 
-## <a name="Range">func</a> [Range](./pool.go?s=7022:7052#L310)
+## <a name="Range">func</a> [Range](./pool.go?s=7054:7084#L312)
 ``` go
 func Range(end int) []struct{}
 ```
@@ -100,7 +97,7 @@ Range creates a range progressing from zero up to, but not including end.
 
 
 
-## <a name="Config">type</a> [Config](./pool.go?s=1076:1668#L55)
+## <a name="Config">type</a> [Config](./pool.go?s=1086:1678#L55)
 ``` go
 type Config struct {
     // initial number of dispatcher
@@ -137,7 +134,7 @@ Config used to init Pool.
 
 
 
-## <a name="Dispatcher">type</a> [Dispatcher](./dispatch.go?s=230:1035#L17)
+## <a name="Dispatcher">type</a> [Dispatcher](./dispatch.go?s=223:1028#L16)
 ``` go
 type Dispatcher struct {
     // contains filtered or unexported fields
@@ -151,7 +148,7 @@ Dispatcher represents the dispatcher that dispatch the job.
 
 
 
-### <a name="NewDispatcher">func</a> [NewDispatcher](./dispatch.go?s=1078:1210#L56)
+### <a name="NewDispatcher">func</a> [NewDispatcher](./dispatch.go?s=1071:1203#L55)
 ``` go
 func NewDispatcher(done chan struct{}, wgPool *sync.WaitGroup, numWorkers int, jobQueue chan Job, jobHandler JobHandler) *Dispatcher
 ```
@@ -161,7 +158,7 @@ NewDispatcher creates a dispatcher.
 
 
 
-### <a name="Dispatcher.Closed">func</a> (\*Dispatcher) [Closed](./dispatch.go?s=2737:2771#L126)
+### <a name="Dispatcher.Closed">func</a> (\*Dispatcher) [Closed](./dispatch.go?s=2733:2767#L125)
 ``` go
 func (d *Dispatcher) Closed() bool
 ```
@@ -170,7 +167,7 @@ Closed returns true if dispatcher received a signal to stop.
 
 
 
-### <a name="Dispatcher.DeWorker">func</a> (\*Dispatcher) [DeWorker](./dispatch.go?s=2919:2960#L134)
+### <a name="Dispatcher.DeWorker">func</a> (\*Dispatcher) [DeWorker](./dispatch.go?s=2915:2956#L133)
 ``` go
 func (d *Dispatcher) DeWorker(num ...int)
 ```
@@ -180,7 +177,7 @@ num is the number of workers to stop, default to 1.
 
 
 
-### <a name="Dispatcher.Run">func</a> (\*Dispatcher) [Run](./dispatch.go?s=1671:1697#L74)
+### <a name="Dispatcher.Run">func</a> (\*Dispatcher) [Run](./dispatch.go?s=1664:1690#L73)
 ``` go
 func (d *Dispatcher) Run()
 ```
@@ -189,7 +186,7 @@ Run creates the workers pool and dispatches available jobs.
 
 
 
-## <a name="IDispatcher">type</a> [IDispatcher](./dispatch.go?s=94:163#L10)
+## <a name="IDispatcher">type</a> [IDispatcher](./dispatch.go?s=87:156#L9)
 ``` go
 type IDispatcher interface {
     Run()
@@ -208,7 +205,7 @@ IDispatcher is the Dispatcher interface.
 
 
 
-## <a name="IPool">type</a> [IPool](./pool.go?s=149:334#L13)
+## <a name="IPool">type</a> [IPool](./pool.go?s=149:344#L13)
 ``` go
 type IPool interface {
     Start()
@@ -218,7 +215,7 @@ type IPool interface {
     SetMaxPoolNum(int)
     SetLoadFactor(int)
     SetResizeSuccessThreshold(int)
-    SetResizePeriodSeconds(int)
+    SetResizePeriodSeconds(time.Duration)
 }
 ```
 IPool is the Pool interface.
@@ -232,7 +229,7 @@ IPool is the Pool interface.
 
 
 
-## <a name="IWorker">type</a> [IWorker](./work.go?s=364:422#L21)
+## <a name="IWorker">type</a> [IWorker](./work.go?s=217:275#L17)
 ``` go
 type IWorker interface {
     Start(JobHandler)
@@ -250,13 +247,10 @@ IWorker is the Worker interface.
 
 
 
-## <a name="Job">type</a> [Job](./work.go?s=87:261#L10)
+## <a name="Job">type</a> [Job](./work.go?s=80:114#L9)
 ``` go
 type Job struct {
-    Name     string `json:"name,omitempty"`
-    ID       int64  `json:"id,omitempty"`
-    Key      string `json:"key,omitempty"`
-    WorkLoad []byte `json:"workload"`
+    Data interface{}
 }
 ```
 Job represents the job to be run.
@@ -270,7 +264,7 @@ Job represents the job to be run.
 
 
 
-## <a name="JobHandler">type</a> [JobHandler](./work.go?s=298:324#L18)
+## <a name="JobHandler">type</a> [JobHandler](./work.go?s=151:177#L14)
 ``` go
 type JobHandler func(Job) error
 ```
@@ -285,7 +279,7 @@ JobHandler completes the job.
 
 
 
-## <a name="JobHandlerGen">type</a> [JobHandlerGen](./pool.go?s=2144:2177#L93)
+## <a name="JobHandlerGen">type</a> [JobHandlerGen](./pool.go?s=2174:2207#L93)
 ``` go
 type JobHandlerGen = func() JobHandler
 ```
@@ -300,7 +294,7 @@ JobHandlerGen returns a JobHandler when it's called.
 
 
 
-## <a name="Option">type</a> [Option](./pool.go?s=2056:2084#L90)
+## <a name="Option">type</a> [Option](./pool.go?s=2086:2114#L90)
 ``` go
 type Option = func(*Config) error
 ```
@@ -315,7 +309,7 @@ Option applies config to Pool Config.
 
 
 
-## <a name="Pool">type</a> [Pool](./pool.go?s=381:1043#L25)
+## <a name="Pool">type</a> [Pool](./pool.go?s=391:1053#L25)
 ``` go
 type Pool struct {
     // JobQueue channel for incoming job request,
@@ -336,7 +330,7 @@ Pool represents a pool with dispatcher.
 
 
 
-### <a name="New">func</a> [New](./pool.go?s=2497:2585#L113)
+### <a name="New">func</a> [New](./pool.go?s=2579:2667#L115)
 ``` go
 func New(done chan struct{}, jobHandlerGenerator JobHandlerGen, options ...Option) *Pool
 ```
@@ -346,7 +340,7 @@ New creates a pool.
 
 
 
-### <a name="Pool.Closed">func</a> (\*Pool) [Closed](./pool.go?s=6605:6633#L289)
+### <a name="Pool.Closed">func</a> (\*Pool) [Closed](./pool.go?s=6637:6665#L291)
 ``` go
 func (p *Pool) Closed() bool
 ```
@@ -355,7 +349,7 @@ Closed returns true if pool received a signal to stop.
 
 
 
-### <a name="Pool.SetLoadFactor">func</a> (\*Pool) [SetLoadFactor](./pool.go?s=5365:5409#L236)
+### <a name="Pool.SetLoadFactor">func</a> (\*Pool) [SetLoadFactor](./pool.go?s=5387:5431#L238)
 ``` go
 func (p *Pool) SetLoadFactor(loadFactor int)
 ```
@@ -364,7 +358,7 @@ SetLoadFactor applies LoadFactor to Pool Config.
 
 
 
-### <a name="Pool.SetMaxPoolNum">func</a> (\*Pool) [SetMaxPoolNum](./pool.go?s=5122:5166#L225)
+### <a name="Pool.SetMaxPoolNum">func</a> (\*Pool) [SetMaxPoolNum](./pool.go?s=5144:5188#L227)
 ``` go
 func (p *Pool) SetMaxPoolNum(maxPoolNum int)
 ```
@@ -373,16 +367,16 @@ SetMaxPoolNum applies MaxPoolNum to Pool Config.
 
 
 
-### <a name="Pool.SetResizePeriodSeconds">func</a> (\*Pool) [SetResizePeriodSeconds](./pool.go?s=5937:5999#L258)
+### <a name="Pool.SetResizePeriodSeconds">func</a> (\*Pool) [SetResizePeriodSeconds](./pool.go?s=5959:6031#L260)
 ``` go
-func (p *Pool) SetResizePeriodSeconds(resizePeriodSeconds int)
+func (p *Pool) SetResizePeriodSeconds(resizePeriodSeconds time.Duration)
 ```
 SetResizePeriodSeconds applies Resize PeriodSeconds to Pool Config.
 
 
 
 
-### <a name="Pool.SetResizeSuccessThreshold">func</a> (\*Pool) [SetResizeSuccessThreshold](./pool.go?s=5633:5701#L247)
+### <a name="Pool.SetResizeSuccessThreshold">func</a> (\*Pool) [SetResizeSuccessThreshold](./pool.go?s=5655:5723#L249)
 ``` go
 func (p *Pool) SetResizeSuccessThreshold(resizeSuccessThreshold int)
 ```
@@ -391,7 +385,7 @@ SetResizeSuccessThreshold applies Resize SuccessThreshold to Pool Config.
 
 
 
-### <a name="Pool.Size">func</a> (\*Pool) [Size](./pool.go?s=6736:6761#L296)
+### <a name="Pool.Size">func</a> (\*Pool) [Size](./pool.go?s=6768:6793#L298)
 ``` go
 func (p *Pool) Size() int
 ```
@@ -400,7 +394,7 @@ Size returns current number of dispatcher.
 
 
 
-### <a name="Pool.Start">func</a> (\*Pool) [Start](./pool.go?s=3409:3431#L145)
+### <a name="Pool.Start">func</a> (\*Pool) [Start](./pool.go?s=3460:3482#L147)
 ``` go
 func (p *Pool) Start()
 ```
@@ -409,7 +403,7 @@ Start run dispatchers in the pool.
 
 
 
-### <a name="Pool.Undispatch">func</a> (\*Pool) [Undispatch](./pool.go?s=6258:6295#L270)
+### <a name="Pool.Undispatch">func</a> (\*Pool) [Undispatch](./pool.go?s=6290:6327#L272)
 ``` go
 func (p *Pool) Undispatch(num ...int)
 ```
@@ -419,15 +413,15 @@ num is the number of dispatcher to stop, default to 1.
 
 
 
-## <a name="Resize">type</a> [Resize](./pool.go?s=1698:2011#L80)
+## <a name="Resize">type</a> [Resize](./pool.go?s=1708:2041#L80)
 ``` go
 type Resize struct {
     // the number of times the check needs to succeed before running resize
     SuccessThreshold int
     // how often to check LoadFactor to determine whether to resize
-    PeriodSeconds int
+    PeriodSeconds time.Duration
     // the number of second to wait after the Pool has started before running the check
-    InitialDelaySeconds int
+    InitialDelaySeconds time.Duration
 }
 ```
 Resize related config.
@@ -441,7 +435,7 @@ Resize related config.
 
 
 
-## <a name="Worker">type</a> [Worker](./work.go?s=481:828#L27)
+## <a name="Worker">type</a> [Worker](./work.go?s=334:681#L23)
 ``` go
 type Worker struct {
     // contains filtered or unexported fields
@@ -455,7 +449,7 @@ Worker represents the worker that executes the job.
 
 
 
-### <a name="NewWorker">func</a> [NewWorker](./work.go?s=863:974#L49)
+### <a name="NewWorker">func</a> [NewWorker](./work.go?s=716:827#L45)
 ``` go
 func NewWorker(done chan struct{}, workerPool chan chan Job, wg *sync.WaitGroup, jobPool chan struct{}) *Worker
 ```
@@ -465,7 +459,7 @@ NewWorker creates a worker.
 
 
 
-### <a name="Worker.Closed">func</a> (\*Worker) [Closed](./work.go?s=1839:1869#L92)
+### <a name="Worker.Closed">func</a> (\*Worker) [Closed](./work.go?s=1698:1728#L88)
 ``` go
 func (w *Worker) Closed() bool
 ```
@@ -474,7 +468,7 @@ Closed returns true if worker received a signal to stop.
 
 
 
-### <a name="Worker.Start">func</a> (\*Worker) [Start](./work.go?s=1205:1247#L61)
+### <a name="Worker.Start">func</a> (\*Worker) [Start](./work.go?s=1058:1100#L57)
 ``` go
 func (w *Worker) Start(handler JobHandler)
 ```

@@ -63,7 +63,7 @@ func BenchmarkWorker(b *testing.B) {
 	i := 0
 	jobHandler := func(j pool.Job) error {
 		i++
-		io.Copy(ioutil.Discard, strings.NewReader(j.Name+j.Key))
+		io.Copy(ioutil.Discard, strings.NewReader(j.Data.(string)))
 		return nil
 	}
 	worker := pool.NewWorker(done, workerPool, wg, jobPool)
@@ -71,10 +71,10 @@ func BenchmarkWorker(b *testing.B) {
 
 	var basket chan pool.Job
 	job := pool.Job{
-		Name: "pool",
-		Key:  "test",
+		Data: "test",
 	}
 
+	b.ResetTimer()
 	b.Run(name, func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			for range pool.Range(howManyJobs) {

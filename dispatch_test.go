@@ -61,8 +61,7 @@ func TestDispatcher(t *testing.T) {
 func BenchmarkDispatcher(b *testing.B) {
 	name := "dispatcher"
 	job := pool.Job{
-		Name: "pool",
-		Key:  "test",
+		Data: "test",
 	}
 	done := make(chan struct{})
 	wgPool := &sync.WaitGroup{}
@@ -76,12 +75,13 @@ func BenchmarkDispatcher(b *testing.B) {
 		mu.Lock()
 		defer mu.Unlock()
 		i++
-		io.Copy(ioutil.Discard, strings.NewReader(j.Name+j.Key))
+		io.Copy(ioutil.Discard, strings.NewReader(j.Data.(string)))
 		return nil
 	}
 	dispatcher := pool.NewDispatcher(done, wgPool, numWorkers, jobQueue, jobHandler)
 	dispatcher.Run()
 
+	b.ResetTimer()
 	b.Run(name, func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			for range pool.Range(howManyJobs) {

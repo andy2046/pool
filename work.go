@@ -1,17 +1,13 @@
 package pool
 
 import (
-	"log"
 	"sync"
 )
 
 type (
 	// Job represents the job to be run.
 	Job struct {
-		Name     string `json:"name,omitempty"`
-		ID       int64  `json:"id,omitempty"`
-		Key      string `json:"key,omitempty"`
-		WorkLoad []byte `json:"workload"`
+		Data interface{}
 	}
 
 	// JobHandler completes the job.
@@ -67,7 +63,7 @@ func (w *Worker) Start(handler JobHandler) {
 				w.pool <- w.basket
 				job := <-w.basket
 				if err := handler(job); err != nil {
-					log.Printf("Error handling job -> %s \n", err.Error())
+					logger.Printf("Error handling job -> %s \n", err.Error())
 				}
 			case <-w.done:
 				// worker has received a signal to stop
@@ -80,7 +76,7 @@ func (w *Worker) Start(handler JobHandler) {
 				close(w.basket)
 				w.wg.Done()
 				if verbose() {
-					log.Println("worker closed")
+					logger.Println("worker closed")
 				}
 				return
 			}
