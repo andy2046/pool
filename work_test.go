@@ -25,7 +25,7 @@ func TestWorker(t *testing.T) {
 		return nil
 	}
 
-	worker := pool.NewWorker(done, workerPool, wg, jobPool)
+	worker := pool.NewWorker(done, workerPool, wg, jobPool, nil)
 	worker.Start(jobHandler)
 	if closed := worker.Closed(); closed {
 		t.Fatal("worker should not be closed")
@@ -66,7 +66,7 @@ func BenchmarkWorker(b *testing.B) {
 		io.Copy(ioutil.Discard, strings.NewReader(j.Data.(string)))
 		return nil
 	}
-	worker := pool.NewWorker(done, workerPool, wg, jobPool)
+	worker := pool.NewWorker(done, workerPool, wg, jobPool, nil)
 	worker.Start(jobHandler)
 
 	var basket chan pool.Job

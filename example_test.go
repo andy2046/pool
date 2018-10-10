@@ -1,15 +1,14 @@
 package pool_test
 
 import (
-	"log"
+	"fmt"
 	"sync"
-	"testing"
 	"time"
 
 	"github.com/andy2046/pool"
 )
 
-func PoolExample(t *testing.T) {
+func ExamplePool() {
 	done := make(chan struct{})
 	mu := &sync.RWMutex{}
 	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
@@ -40,13 +39,15 @@ func PoolExample(t *testing.T) {
 
 	close(done)
 
-	// sleep for done channel to finish
-	time.Sleep(3 * time.Second)
-	mu.RLock()
-	log.Println(sum) // 55
-	if sum != 55 {
-		mu.RUnlock()
-		t.Fatalf("sum is %d \n", sum)
+	// wait for jobs to finish
+	for {
+		time.Sleep(1 * time.Second)
+		if p.Closed() {
+			break
+		}
 	}
+	mu.RLock()
+	fmt.Println(sum)
+	// Output: 55
 	mu.RUnlock()
 }

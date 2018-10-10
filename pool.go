@@ -36,11 +36,14 @@ type (
 		// current number of dispatcher
 		poolNum int
 
+		// Errors channel to receive any errors that occurred while processing job request
+		Errors chan error
+
 		// done channel signals the pool to stop,
 		// user should stop pushing job request to JobQueue before closing done channel
-		done chan struct{}
+		done <-chan struct{}
 
-		doneMe chan struct{}
+		doneDispatcher chan struct{}
 
 		// wait to drain JobQueue
 		wg *sync.WaitGroup
@@ -74,6 +77,11 @@ type (
 
 		// Verbose logging mode if it's true, by default it's false
 		Verbose bool
+
+		// If enabled, any errors that occurred while processing job request are returned on
+		// the Errors channel (default disabled). If enabled, you must read from
+		// the Errors channel or it will deadlock.
+		Errors bool
 	}
 
 	// Resize related config.
@@ -112,7 +120,7 @@ var (
 )
 
 // New creates a pool.
-func New(done chan struct{}, jobHandlerGenerator JobHandlerGen, options ...Option) *Pool {
+func New(done <-chan struct{}, jobHandlerGenerator JobHandlerGen, options ...Option) *Pool {
 	pConfig := DefaultConfig
 	setOption(&pConfig, options...)
 
@@ -132,15 +140,21 @@ func New(done chan struct{}, jobHandlerGenerator JobHandlerGen, options ...Optio
 		os.Setenv("Pool.Log.Verbose", "true")
 	}
 
-	return &Pool{
+	p := &Pool{
 		JobQueue:            make(chan Job, pConfig.JobQueueBufferSize),
 		poolConfig:          pConfig,
 		JobHandlerGenerator: jobHandlerGenerator,
 		done:                done,
-		doneMe:              make(chan struct{}, pConfig.InitPoolNum),
+		doneDispatcher:      make(chan struct{}, pConfig.InitPoolNum),
 		mu:                  &sync.Mutex{},
 		wg:                  &sync.WaitGroup{},
 	}
+
+	if pConfig.Errors {
+		p.Errors = make(chan error, 1)
+	}
+
+	return p
 }
 
 // Start run dispatchers in the pool.
@@ -158,7 +172,7 @@ func (p *Pool) Start() {
 func (p *Pool) newDispatcher() {
 	j := p.JobHandlerGenerator()
 	p.wg.Add(1)
-	d := NewDispatcher(p.doneMe, p.wg, p.poolConfig.WorkerNum, p.JobQueue, j)
+	d := NewDispatcher(p.doneDispatcher, p.wg, p.poolConfig.WorkerNum, p.JobQueue, j, p.Errors)
 	d.Run()
 }
 
@@ -167,20 +181,22 @@ func (p *Pool) listen() {
 	for {
 		select {
 		case _, open := <-p.done:
-			if open {
-				p.Undispatch()
-			} else {
+			if !open {
+				close(p.JobQueue)
+				p.wg.Wait()
+				close(p.doneDispatcher)
 				p.mu.Lock()
 				if !p.closed {
 					p.closed = true
 				}
 				p.poolNum = 0
 				p.mu.Unlock()
-				close(p.JobQueue)
-				p.wg.Wait()
-				close(p.doneMe)
+				if p.poolConfig.Errors {
+					close(p.Errors)
+				}
 				return
 			}
+			p.Undispatch()
 		}
 	}
 }
@@ -205,7 +221,7 @@ func (p *Pool) autoScale() {
 				p.poolNum++
 			}
 			p.mu.Unlock()
-		case _, open := <-p.doneMe:
+		case _, open := <-p.done:
 			if !open {
 				return
 			}
@@ -280,7 +296,7 @@ func (p *Pool) Undispatch(num ...int) {
 
 	if !p.closed && p.poolNum-n > 0 {
 		for range Range(n) {
-			p.doneMe <- struct{}{}
+			p.doneDispatcher <- struct{}{}
 			p.poolNum--
 			p.wg.Done()
 		}

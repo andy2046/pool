@@ -22,15 +22,17 @@ type (
 	// Worker represents the worker that executes the job.
 	Worker struct {
 		// worker pool the worker belongs to
-		pool chan chan Job
+		pool chan<- chan Job
 
-		jobPool chan struct{}
+		jobPool <-chan struct{}
 
 		// worker's job channel for job assignment
 		basket chan Job
 
 		// done channel signals the worker to stop
-		done chan struct{}
+		done <-chan struct{}
+
+		errors chan error
 
 		wg *sync.WaitGroup
 
@@ -42,12 +44,13 @@ type (
 )
 
 // NewWorker creates a worker.
-func NewWorker(done chan struct{}, workerPool chan chan Job, wg *sync.WaitGroup, jobPool chan struct{}) *Worker {
+func NewWorker(done <-chan struct{}, workerPool chan<- chan Job, wg *sync.WaitGroup, jobPool <-chan struct{}, errors chan error) *Worker {
 	return &Worker{
 		pool:    workerPool,
 		jobPool: jobPool,
 		basket:  make(chan Job, 1),
 		done:    done,
+		errors:  errors,
 		wg:      wg,
 		mu:      &sync.Mutex{},
 	}
@@ -64,17 +67,20 @@ func (w *Worker) Start(handler JobHandler) {
 				job := <-w.basket
 				if err := handler(job); err != nil {
 					logger.Printf("Error handling job -> %s \n", err.Error())
+					if w.errors != nil {
+						w.errors <- err
+					}
 				}
 			case <-w.done:
 				// worker has received a signal to stop
 				w.done = nil
+				close(w.basket)
+				w.wg.Done()
 				w.mu.Lock()
 				if !w.closed {
 					w.closed = true
 				}
 				w.mu.Unlock()
-				close(w.basket)
-				w.wg.Done()
 				if verbose() {
 					logger.Println("worker closed")
 				}

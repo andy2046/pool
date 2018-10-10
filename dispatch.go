@@ -21,13 +21,17 @@ type (
 		jobPool chan struct{}
 
 		// pointer to the Pool JobQueue
-		jobQueue chan Job
+		jobQueue <-chan Job
 
 		// doneWorker channel signals the worker to stop
 		doneWorker chan struct{}
 
+		once sync.Once
+
+		errors chan error
+
 		// done channel signals the dispatcher to stop
-		done chan struct{}
+		done <-chan struct{}
 
 		// wait for workers to finish
 		wg *sync.WaitGroup
@@ -52,7 +56,7 @@ type (
 )
 
 // NewDispatcher creates a dispatcher.
-func NewDispatcher(done chan struct{}, wgPool *sync.WaitGroup, numWorkers int, jobQueue chan Job, jobHandler JobHandler) *Dispatcher {
+func NewDispatcher(done <-chan struct{}, wgPool *sync.WaitGroup, numWorkers int, jobQueue <-chan Job, jobHandler JobHandler, errors chan error) *Dispatcher {
 	pool := make(chan chan Job, numWorkers)
 	return &Dispatcher{
 		workerPool: pool,
@@ -62,6 +66,7 @@ func NewDispatcher(done chan struct{}, wgPool *sync.WaitGroup, numWorkers int, j
 		wg:         &sync.WaitGroup{},
 		wgJob:      &sync.WaitGroup{},
 		wgPool:     wgPool,
+		errors:     errors,
 		done:       done,
 		doneWorker: make(chan struct{}, numWorkers),
 		jobPool:    make(chan struct{}, numWorkers),
@@ -74,11 +79,19 @@ func (d *Dispatcher) Run() {
 	d.wg.Add(d.numWorkers)
 	// starting all workers in the dispatcher
 	for i := 0; i < d.numWorkers; i++ {
-		worker := NewWorker(d.doneWorker, d.workerPool, d.wg, d.jobPool)
+		worker := NewWorker(d.doneWorker, d.workerPool, d.wg, d.jobPool, d.errors)
 		worker.Start(d.jobHandler)
 	}
 
 	go d.dispatch()
+}
+
+func (d *Dispatcher) closeWorkerDoneCh() {
+	d.once.Do(func() {
+		d.wgJob.Wait()
+		close(d.doneWorker)
+		d.wg.Wait()
+	})
 }
 
 func (d *Dispatcher) dispatch() {
@@ -87,13 +100,14 @@ func (d *Dispatcher) dispatch() {
 		case job, open := <-d.jobQueue:
 			if !open {
 				d.jobQueue = nil
+				d.closeWorkerDoneCh()
 				d.wgPool.Done()
 				break
 			}
 			// a job request has been received
 			d.wgJob.Add(1)
 			go func(j Job) {
-				// try to obtain a worker that is available
+				// try to obtain an available worker
 				// this will block until a worker is idle
 				d.jobPool <- struct{}{}
 				w := <-d.workerPool
@@ -103,16 +117,14 @@ func (d *Dispatcher) dispatch() {
 			}(job)
 		case <-d.done:
 			d.done = nil
+			d.closeWorkerDoneCh()
+			close(d.workerPool)
+			close(d.jobPool)
 			d.mu.Lock()
 			if !d.closed {
 				d.closed = true
 			}
 			d.mu.Unlock()
-			d.wgJob.Wait()
-			close(d.doneWorker)
-			d.wg.Wait()
-			close(d.workerPool)
-			close(d.jobPool)
 			if verbose() {
 				logger.Println("dispatcher closed")
 			}

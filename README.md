@@ -62,10 +62,16 @@ func main() {
 
 	close(done)
 
-	// sleep for done channel to finish
-	time.Sleep(3 * time.Second)
+	// wait for jobs to finish
+	for {
+		time.Sleep(1 * time.Second)
+		if p.Closed() {
+			break
+		}
+	}
 	mu.RLock()
-	log.Println(sum) // 55
+	fmt.Println(sum)
+	// Output: 55
 	mu.RUnlock()
 }
 ```

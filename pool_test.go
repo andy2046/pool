@@ -37,11 +37,18 @@ func TestPool(t *testing.T) {
 	opt := func(c *pool.Config) error {
 		c.InitPoolNum = size
 		c.WorkerNum = 2
+		c.Errors = true
 		return nil
 	}
 
 	p := pool.New(done, jobHandlerGenerator, opt)
 	p.Start()
+
+	go func() {
+		for err := range p.Errors {
+			t.Logf("TestPool error: %v", err)
+		}
+	}()
 
 	if closed := p.Closed(); closed {
 		t.Fatal("pool should not be closed")
@@ -65,7 +72,6 @@ func TestPool(t *testing.T) {
 	}
 
 	done <- struct{}{}
-	// sleep for done channel to finish
 	time.Sleep(1 * time.Second)
 
 	if closed := p.Closed(); closed {
@@ -76,8 +82,13 @@ func TestPool(t *testing.T) {
 	}
 
 	close(done)
-	// sleep for done channel to finish
-	time.Sleep(5 * time.Second)
+	// wait for jobs to finish
+	for {
+		time.Sleep(1 * time.Second)
+		if p.Closed() {
+			break
+		}
+	}
 	mu.RLock()
 	if !reflect.DeepEqual(result, expected) {
 		mu.RUnlock()
