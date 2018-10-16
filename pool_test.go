@@ -1,6 +1,7 @@
 package pool_test
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"reflect"
@@ -10,6 +11,9 @@ import (
 	"time"
 
 	"github.com/andy2046/pool"
+	opentracing "github.com/opentracing/opentracing-go"
+	jaeger "github.com/uber/jaeger-client-go"
+	config "github.com/uber/jaeger-client-go/config"
 )
 
 var _ pool.IPool = &pool.Pool{}
@@ -34,10 +38,21 @@ func TestPool(t *testing.T) {
 		}
 	}
 	size := 3
+
+	var tracer opentracing.Tracer
+	/*
+		tracer, closer := newTracer("Pool")
+		if tracer != nil && closer != nil {
+			defer closer.Close()
+			opentracing.SetGlobalTracer(tracer)
+		}
+	*/
+
 	opt := func(c *pool.Config) error {
 		c.InitPoolNum = size
 		c.WorkerNum = 2
 		c.Errors = true
+		c.Tracer = tracer
 		return nil
 	}
 
@@ -133,4 +148,23 @@ func BenchmarkPool(b *testing.B) {
 			p.JobQueue <- j
 		}
 	})
+}
+
+// newTracer returns an instance of Jaeger Tracer.
+func newTracer(service string) (opentracing.Tracer, io.Closer) {
+	cfg := &config.Configuration{
+		Sampler: &config.SamplerConfig{
+			Type:  "const",
+			Param: 1,
+		},
+		Reporter: &config.ReporterConfig{
+			LogSpans: true,
+		},
+	}
+	tracer, closer, err := cfg.New(service, config.Logger(jaeger.StdLogger))
+	if err != nil {
+		fmt.Printf("fail to init Jaeger: %v\n", err)
+		return nil, nil
+	}
+	return tracer, closer
 }

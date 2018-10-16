@@ -2,6 +2,9 @@ package pool
 
 import (
 	"sync"
+
+	opentracing "github.com/opentracing/opentracing-go"
+	opentracingLog "github.com/opentracing/opentracing-go/log"
 )
 
 type (
@@ -52,14 +55,17 @@ type (
 
 		// jobHandler defines how to handle job
 		jobHandler JobHandler
+
+		tracer opentracing.Tracer
 	}
 )
 
 // NewDispatcher creates a dispatcher.
-func NewDispatcher(done <-chan struct{}, wgPool *sync.WaitGroup, numWorkers int, jobQueue <-chan Job, jobHandler JobHandler, errors chan error) *Dispatcher {
-	pool := make(chan chan Job, numWorkers)
+func NewDispatcher(done <-chan struct{}, wgPool *sync.WaitGroup, numWorkers int, jobQueue <-chan Job,
+	jobHandler JobHandler, errors chan error, tracer opentracing.Tracer) *Dispatcher {
+	wp := make(chan chan Job, numWorkers)
 	return &Dispatcher{
-		workerPool: pool,
+		workerPool: wp,
 		numWorkers: numWorkers,
 		jobQueue:   jobQueue,
 		jobHandler: jobHandler,
@@ -71,15 +77,25 @@ func NewDispatcher(done <-chan struct{}, wgPool *sync.WaitGroup, numWorkers int,
 		doneWorker: make(chan struct{}, numWorkers),
 		jobPool:    make(chan struct{}, numWorkers),
 		mu:         &sync.Mutex{},
+		tracer:     tracer,
 	}
 }
 
 // Run creates the workers pool and dispatches available jobs.
 func (d *Dispatcher) Run() {
+	if d.tracer != nil {
+		span := d.tracer.StartSpan("Run")
+		defer span.Finish()
+		span.SetTag("component", "Dispatcher")
+		span.LogFields(
+			opentracingLog.Int("WorkerNum", d.numWorkers),
+		)
+	}
+
 	d.wg.Add(d.numWorkers)
 	// starting all workers in the dispatcher
 	for i := 0; i < d.numWorkers; i++ {
-		worker := NewWorker(d.doneWorker, d.workerPool, d.wg, d.jobPool, d.errors)
+		worker := NewWorker(d.doneWorker, d.workerPool, d.wg, d.jobPool, d.errors, d.tracer)
 		worker.Start(d.jobHandler)
 	}
 

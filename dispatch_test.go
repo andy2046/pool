@@ -32,7 +32,7 @@ func TestDispatcher(t *testing.T) {
 		return nil
 	}
 
-	dispatcher := pool.NewDispatcher(done, wgPool, numWorkers, jobQueue, jobHandler, nil)
+	dispatcher := pool.NewDispatcher(done, wgPool, numWorkers, jobQueue, jobHandler, nil, nil)
 	dispatcher.Run()
 	if closed := dispatcher.Closed(); closed {
 		t.Fatal("dispatcher should not be closed")
@@ -83,7 +83,7 @@ func BenchmarkDispatcher(b *testing.B) {
 		io.Copy(ioutil.Discard, strings.NewReader(j.Data.(string)))
 		return nil
 	}
-	dispatcher := pool.NewDispatcher(done, wgPool, numWorkers, jobQueue, jobHandler, nil)
+	dispatcher := pool.NewDispatcher(done, wgPool, numWorkers, jobQueue, jobHandler, nil, nil)
 	dispatcher.Run()
 
 	b.ResetTimer()

@@ -6,6 +6,9 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	opentracing "github.com/opentracing/opentracing-go"
+	opentracingLog "github.com/opentracing/opentracing-go/log"
 )
 
 type (
@@ -82,6 +85,9 @@ type (
 		// the Errors channel (default disabled). If enabled, you must read from
 		// the Errors channel or it will deadlock.
 		Errors bool
+
+		// Tracer is the opentracing.Tracer used for tracing.
+		Tracer opentracing.Tracer
 	}
 
 	// Resize related config.
@@ -159,6 +165,15 @@ func New(done <-chan struct{}, jobHandlerGenerator JobHandlerGen, options ...Opt
 
 // Start run dispatchers in the pool.
 func (p *Pool) Start() {
+	if p.poolConfig.Tracer != nil {
+		span := p.poolConfig.Tracer.StartSpan("Start")
+		defer span.Finish()
+		span.SetTag("component", "Pool")
+		span.LogFields(
+			opentracingLog.Int("DispatcherNum", p.poolConfig.InitPoolNum),
+		)
+	}
+
 	for range Range(p.poolConfig.InitPoolNum) {
 		p.newDispatcher()
 	}
@@ -172,16 +187,22 @@ func (p *Pool) Start() {
 func (p *Pool) newDispatcher() {
 	j := p.JobHandlerGenerator()
 	p.wg.Add(1)
-	d := NewDispatcher(p.doneDispatcher, p.wg, p.poolConfig.WorkerNum, p.JobQueue, j, p.Errors)
+	d := NewDispatcher(p.doneDispatcher, p.wg, p.poolConfig.WorkerNum,
+		p.JobQueue, j, p.Errors, p.poolConfig.Tracer)
 	d.Run()
 }
 
 // listen for signals from done channel.
 func (p *Pool) listen() {
+	var span opentracing.Span
 	for {
 		select {
 		case _, open := <-p.done:
 			if !open {
+				if p.poolConfig.Tracer != nil {
+					span = p.poolConfig.Tracer.StartSpan("Close")
+					span.SetTag("component", "Pool")
+				}
 				close(p.JobQueue)
 				p.wg.Wait()
 				close(p.doneDispatcher)
@@ -193,6 +214,9 @@ func (p *Pool) listen() {
 				p.mu.Unlock()
 				if p.poolConfig.Errors {
 					close(p.Errors)
+				}
+				if span != nil {
+					span.Finish()
 				}
 				return
 			}

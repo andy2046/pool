@@ -2,6 +2,8 @@ package pool
 
 import (
 	"sync"
+
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 type (
@@ -40,11 +42,14 @@ type (
 		closed bool
 
 		mu *sync.Mutex
+
+		tracer opentracing.Tracer
 	}
 )
 
 // NewWorker creates a worker.
-func NewWorker(done <-chan struct{}, workerPool chan<- chan Job, wg *sync.WaitGroup, jobPool <-chan struct{}, errors chan error) *Worker {
+func NewWorker(done <-chan struct{}, workerPool chan<- chan Job, wg *sync.WaitGroup,
+	jobPool <-chan struct{}, errors chan error, tracer opentracing.Tracer) *Worker {
 	return &Worker{
 		pool:    workerPool,
 		jobPool: jobPool,
@@ -53,15 +58,27 @@ func NewWorker(done <-chan struct{}, workerPool chan<- chan Job, wg *sync.WaitGr
 		errors:  errors,
 		wg:      wg,
 		mu:      &sync.Mutex{},
+		tracer:  tracer,
 	}
 }
 
 // Start pushes the worker into worker queue, listens for signal to stop.
 func (w *Worker) Start(handler JobHandler) {
+	if w.tracer != nil {
+		span := w.tracer.StartSpan("Start")
+		defer span.Finish()
+		span.SetTag("component", "Worker")
+	}
+
 	go func() {
+		var span opentracing.Span
 		for {
 			select {
 			case <-w.jobPool:
+				if w.tracer != nil {
+					span = w.tracer.StartSpan("JobHandler")
+					span.SetTag("component", "Worker")
+				}
 				// worker has received a job request
 				w.pool <- w.basket
 				job := <-w.basket
@@ -70,6 +87,9 @@ func (w *Worker) Start(handler JobHandler) {
 					if w.errors != nil {
 						w.errors <- err
 					}
+				}
+				if span != nil {
+					span.Finish()
 				}
 			case <-w.done:
 				// worker has received a signal to stop
