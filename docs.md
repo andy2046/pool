@@ -76,7 +76,7 @@ var (
 ```
 
 
-## <a name="Max">func</a> [Max](./pool.go?s=8297:8319#L357)
+## <a name="Max">func</a> [Max](./pool.go?s=8526:8548#L369)
 ``` go
 func Max(x, y int) int
 ```
@@ -84,7 +84,7 @@ Max returns the larger of x or y.
 
 
 
-## <a name="Min">func</a> [Min](./pool.go?s=8399:8421#L365)
+## <a name="Min">func</a> [Min](./pool.go?s=8628:8650#L377)
 ``` go
 func Min(x, y int) int
 ```
@@ -92,7 +92,7 @@ Min returns the smaller of x or y.
 
 
 
-## <a name="Range">func</a> [Range](./pool.go?s=8194:8224#L352)
+## <a name="Range">func</a> [Range](./pool.go?s=8423:8453#L364)
 ``` go
 func Range(end int) []struct{}
 ```
@@ -101,7 +101,7 @@ Range creates a range progressing from zero up to, but not including end.
 
 
 
-## <a name="Config">type</a> [Config](./pool.go?s=1316:2215#L61)
+## <a name="Config">type</a> [Config](./pool.go?s=1316:2353#L61)
 ``` go
 type Config struct {
     // initial number of dispatcher
@@ -130,6 +130,10 @@ type Config struct {
     // the Errors channel (default disabled). If enabled, you must read from
     // the Errors channel or it will deadlock.
     Errors bool
+
+    // If enabled, it check `LoadFactor` peridically and progressively resize to `MaxPoolNum`,
+    // by default it's false.
+    AutoScale bool
 
     // Tracer is the opentracing.Tracer used for tracing.
     Tracer opentracing.Tracer
@@ -292,7 +296,7 @@ JobHandler completes the job.
 
 
 
-## <a name="JobHandlerGen">type</a> [JobHandlerGen](./pool.go?s=2711:2744#L107)
+## <a name="JobHandlerGen">type</a> [JobHandlerGen](./pool.go?s=2849:2882#L111)
 ``` go
 type JobHandlerGen = func() JobHandler
 ```
@@ -307,7 +311,7 @@ JobHandlerGen returns a JobHandler when it's called.
 
 
 
-## <a name="Option">type</a> [Option](./pool.go?s=2623:2651#L104)
+## <a name="Option">type</a> [Option](./pool.go?s=2761:2789#L108)
 ``` go
 type Option = func(*Config) error
 ```
@@ -346,7 +350,7 @@ Pool represents a pool with dispatcher.
 
 
 
-### <a name="New">func</a> [New](./pool.go?s=3116:3206#L129)
+### <a name="New">func</a> [New](./pool.go?s=3254:3344#L133)
 ``` go
 func New(done <-chan struct{}, jobHandlerGenerator JobHandlerGen, options ...Option) *Pool
 ```
@@ -356,7 +360,7 @@ New creates a pool.
 
 
 
-### <a name="Pool.Closed">func</a> (\*Pool) [Closed](./pool.go?s=7777:7805#L331)
+### <a name="Pool.Closed">func</a> (\*Pool) [Closed](./pool.go?s=8006:8034#L343)
 ``` go
 func (p *Pool) Closed() bool
 ```
@@ -365,7 +369,7 @@ Closed returns true if pool received a signal to stop.
 
 
 
-### <a name="Pool.SetLoadFactor">func</a> (\*Pool) [SetLoadFactor](./pool.go?s=6519:6563#L278)
+### <a name="Pool.SetLoadFactor">func</a> (\*Pool) [SetLoadFactor](./pool.go?s=6748:6792#L290)
 ``` go
 func (p *Pool) SetLoadFactor(loadFactor int)
 ```
@@ -374,7 +378,7 @@ SetLoadFactor applies LoadFactor to Pool Config.
 
 
 
-### <a name="Pool.SetMaxPoolNum">func</a> (\*Pool) [SetMaxPoolNum](./pool.go?s=6276:6320#L267)
+### <a name="Pool.SetMaxPoolNum">func</a> (\*Pool) [SetMaxPoolNum](./pool.go?s=6505:6549#L279)
 ``` go
 func (p *Pool) SetMaxPoolNum(maxPoolNum int)
 ```
@@ -383,7 +387,7 @@ SetMaxPoolNum applies MaxPoolNum to Pool Config.
 
 
 
-### <a name="Pool.SetResizePeriodSeconds">func</a> (\*Pool) [SetResizePeriodSeconds](./pool.go?s=7091:7163#L300)
+### <a name="Pool.SetResizePeriodSeconds">func</a> (\*Pool) [SetResizePeriodSeconds](./pool.go?s=7320:7392#L312)
 ``` go
 func (p *Pool) SetResizePeriodSeconds(resizePeriodSeconds time.Duration)
 ```
@@ -392,7 +396,7 @@ SetResizePeriodSeconds applies Resize PeriodSeconds to Pool Config.
 
 
 
-### <a name="Pool.SetResizeSuccessThreshold">func</a> (\*Pool) [SetResizeSuccessThreshold](./pool.go?s=6787:6855#L289)
+### <a name="Pool.SetResizeSuccessThreshold">func</a> (\*Pool) [SetResizeSuccessThreshold](./pool.go?s=7016:7084#L301)
 ``` go
 func (p *Pool) SetResizeSuccessThreshold(resizeSuccessThreshold int)
 ```
@@ -401,7 +405,7 @@ SetResizeSuccessThreshold applies Resize SuccessThreshold to Pool Config.
 
 
 
-### <a name="Pool.Size">func</a> (\*Pool) [Size](./pool.go?s=7908:7933#L338)
+### <a name="Pool.Size">func</a> (\*Pool) [Size](./pool.go?s=8137:8162#L350)
 ``` go
 func (p *Pool) Size() int
 ```
@@ -410,7 +414,7 @@ Size returns current number of dispatcher.
 
 
 
-### <a name="Pool.Start">func</a> (\*Pool) [Start](./pool.go?s=4066:4088#L167)
+### <a name="Pool.Start">func</a> (\*Pool) [Start](./pool.go?s=4204:4226#L171)
 ``` go
 func (p *Pool) Start()
 ```
@@ -419,7 +423,7 @@ Start run dispatchers in the pool.
 
 
 
-### <a name="Pool.Undispatch">func</a> (\*Pool) [Undispatch](./pool.go?s=7422:7459#L312)
+### <a name="Pool.Undispatch">func</a> (\*Pool) [Undispatch](./pool.go?s=7651:7688#L324)
 ``` go
 func (p *Pool) Undispatch(num ...int)
 ```
@@ -429,7 +433,7 @@ num is the number of dispatcher to stop, default to 1.
 
 
 
-## <a name="Resize">type</a> [Resize](./pool.go?s=2245:2578#L94)
+## <a name="Resize">type</a> [Resize](./pool.go?s=2383:2716#L98)
 ``` go
 type Resize struct {
     // the number of times the check needs to succeed before running resize

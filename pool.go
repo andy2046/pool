@@ -86,6 +86,10 @@ type (
 		// the Errors channel or it will deadlock.
 		Errors bool
 
+		// If enabled, it check `LoadFactor` peridically and progressively resize to `MaxPoolNum`,
+		// by default it's false.
+		AutoScale bool
+
 		// Tracer is the opentracing.Tracer used for tracing.
 		Tracer opentracing.Tracer
 	}
@@ -181,7 +185,9 @@ func (p *Pool) Start() {
 	p.poolNum = p.poolConfig.InitPoolNum
 	p.mu.Unlock()
 	go p.listen()
-	go p.autoScale()
+	if p.poolConfig.AutoScale {
+		go p.autoScale()
+	}
 }
 
 func (p *Pool) newDispatcher() {
@@ -220,14 +226,20 @@ func (p *Pool) listen() {
 				}
 				return
 			}
-			p.Undispatch()
 		}
 	}
 }
 
 // autoScale check LoadFactor peridically to determine whether to resize.
 func (p *Pool) autoScale() {
-	time.Sleep(p.poolConfig.InitialDelaySeconds * time.Second)
+	select {
+	case <-time.After(p.poolConfig.InitialDelaySeconds * time.Second):
+	case _, open := <-p.done:
+		if !open {
+			return
+		}
+	}
+
 	count := 0
 	t := time.NewTicker(p.poolConfig.PeriodSeconds * time.Second)
 	defer t.Stop()

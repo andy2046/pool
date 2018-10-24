@@ -87,13 +87,12 @@ func TestPool(t *testing.T) {
 	}
 
 	done <- struct{}{}
-	time.Sleep(1 * time.Second)
 
 	if closed := p.Closed(); closed {
 		t.Fatal("pool should not be closed")
 	}
-	if p.Size() != size-2 {
-		t.Fatalf("pool size should be %d \n", size-2)
+	if p.Size() != size-1 {
+		t.Fatalf("pool size should be %d \n", size-1)
 	}
 
 	close(done)
